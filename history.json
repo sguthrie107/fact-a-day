@@ -1,0 +1,41 @@
+{
+  "topics": [
+    "AI Magic Card Design",
+    "Algorithmic Trading Retail Investing",
+    "CS:GO Performance Optimization",
+    "Canine Wearables Behavioral Analytics",
+    "Functional Fitness Recovery Biohacking"
+  ],
+  "papers": [
+    {
+      "date": "2026-04-01T00:28:35.318Z",
+      "title": "Beyond Human Intuition: Leveraging Generative AI for Novel Card and Mechanic Design in Collectible Card Games",
+      "topic_tag": "AI Magic Card Design",
+      "file": "2026-04-01-beyond-human-intuition-leveraging-generative-ai-for-novel-ca.md"
+    },
+    {
+      "date": "2026-04-01T00:30:39.911Z",
+      "title": "Democratizing Algorithmic Trading: Strategies and Tools for the Modern Retail Investor",
+      "topic_tag": "Algorithmic Trading Retail Investing",
+      "file": "2026-04-01-democratizing-algorithmic-trading-strategies-and-tools-for-t.md"
+    },
+    {
+      "date": "2026-04-01T00:33:57.201Z",
+      "title": "Precision and Reflex: Ergonomic and Neurological Strategies for Elite Performance in Tactical First-Person Shooters",
+      "topic_tag": "CS:GO Performance Optimization",
+      "file": "2026-04-01-precision-and-reflex-ergonomic-and-neurological-strategies-f.md"
+    },
+    {
+      "date": "2026-04-01T00:37:03.474Z",
+      "title": "Decoding Canine Well-being: Wearable Biometrics and Behavioral Analytics for Proactive Dog Care",
+      "topic_tag": "Canine Wearables Behavioral Analytics",
+      "file": "2026-04-01-decoding-canine-well-being-wearable-biometrics-and-behaviora.md"
+    },
+    {
+      "date": "2026-04-01T00:41:59.312Z",
+      "title": "Optimizing Recovery: Advanced Biohacking Strategies for Functional Fitness Athletes",
+      "topic_tag": "Functional Fitness Recovery Biohacking",
+      "file": "2026-04-01-optimizing-recovery-advanced-biohacking-strategies-for-funct.md"
+    }
+  ]
+}

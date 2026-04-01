@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
  * research-paper.js
- * Generates a personalized 1-page research paper using Claude AI.
+ * Generates a personalized 1-page research paper using Gemini AI.
  * Personalized for a 29-year-old software engineer who loves:
  *   anthropology, dogs, men's fashion & history of clothes, computer science,
  *   AI (as it relates to CS), personal finance, Counter-Strike, Magic the Gathering,
  *   CrossFit, and cooking.
  *
  * Usage:  node research-paper.js
- * Env:    ANTHROPIC_API_KEY  — your Anthropic API key
+ * Env:    GEMINI_API_KEY  — your Gemini API key
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import chalk from "chalk";
 import boxen from "boxen";
 import ora from "ora";
@@ -37,8 +37,6 @@ const USER_INTERESTS = [
   "computer science",
   "artificial intelligence as it relates to computer science",
   "personal finance and investing",
-  "Counter-Strike (the video game)",
-  "Magic the Gathering",
   "CrossFit and functional fitness",
   "cooking and culinary techniques",
 ];
@@ -110,7 +108,7 @@ const SEPARATOR = chalk.cyan("━".repeat(72));
 
 function banner() {
   const title = chalk.bold.magentaBright("  📄  FACT-A-DAY RESEARCH PAPER ENGINE  📄  ");
-  const subtitle = chalk.dim("  Powered by Claude AI · Personalized for you  ");
+  const subtitle = chalk.dim("  Powered by Gemini AI · Personalized for you  ");
   console.log(
     boxen(`${title}\n${subtitle}`, {
       padding: 1,
@@ -122,6 +120,8 @@ function banner() {
 }
 
 function renderPaper(title, body) {
+  const printableBody = typeof body === "string" ? body.trim() : "";
+
   console.log();
   console.log(SEPARATOR);
   console.log();
@@ -130,8 +130,16 @@ function renderPaper(title, body) {
   console.log(SEPARATOR);
   console.log();
 
+  if (!printableBody) {
+    console.log(chalk.yellow("  No printable body content returned by the model."));
+    console.log();
+    console.log(SEPARATOR);
+    console.log();
+    return;
+  }
+
   // Word-wrap and colorize the body section by section
-  const lines = body.split("\n");
+  const lines = printableBody.split("\n");
   for (const line of lines) {
     const trimmed = line.trim();
 
@@ -176,75 +184,69 @@ function buildPrompt(history) {
       ? `\n\nIMPORTANT — Topics already covered (DO NOT repeat or overlap with these):\n${history.topics.map((t, i) => `  ${i + 1}. ${t}`).join("\n")}`
       : "";
 
+  const previousTitles =
+    history.papers?.length > 0
+      ? `\n\nIMPORTANT — Previous paper titles (avoid adjacent or near-duplicate angles):\n${history.papers.map((paper, i) => `  ${i + 1}. ${paper.title}`).join("\n")}`
+      : "";
+
+  const recentPapers =
+    history.papers?.length > 0
+      ? `\n\nMost recent papers (you must choose a clearly different domain and angle):\n${history.papers.slice(-3).map((paper, i) => `  ${i + 1}. ${paper.title} [${paper.topic_tag}]`).join("\n")}`
+      : "";
+
   return `You are a research paper generator for a specific person with the following profile:
 - Age: 29 years old
 - Profession: Software engineer
 - Interests (choose ONE to focus on per paper): ${USER_INTERESTS.join(", ")}
-- Preference: practical and modern information over purely historical facts${previousTopics}
+- Preference: practical and modern information over purely historical facts${previousTopics}${previousTitles}${recentPapers}
 
 Generate a concise 1-page research paper on a topic that this person would find genuinely fascinating. The topic MUST be one they haven't seen before (see the list above).
 
 Rules:
 1. Pick a specific, niche angle — not a broad survey. E.g. don't just write "dogs" — write about a specific aspect like "How border collies process human pointing gestures differently from other breeds".
 2. Lean toward practical, modern, or cutting-edge information. Include real-world applications or actionable insights where possible.
-3. The paper should have the following sections (use markdown headings):
+3. Ensure the paper is substantively different from recent papers in BOTH domain and angle. If the last paper was finance-related, pick a non-finance domain this time.
+4. The paper should have the following sections (use markdown headings):
    ## Abstract
    ## Introduction
    ## Key Findings
    ## Practical Implications
    ## Conclusion
-4. Keep the total length to roughly 500–700 words (one page when printed).
-5. Start your response with a JSON block (fenced with \`\`\`json) containing exactly:
+5. Keep the total length to roughly 900–1200 words.
+6. In Key Findings, include at least 5 concrete findings with specificity (tools, methods, metrics, or examples).
+7. Start your response with a JSON block (fenced with \`\`\`json) containing exactly:
    { "title": "<paper title>", "topic_tag": "<short 3-7 word topic tag>" }
    Then output the full paper body (in markdown) after the JSON block.
-6. Write in a clear, engaging style — this is meant to be read for fun as well as for learning.`;
+8. Write in a clear, engaging style — this is meant to be read for fun as well as for learning.`;
 }
 
-/* ─────────────────────────────────────────────
-   Main
-───────────────────────────────────────────── */
-async function main() {
-  banner();
-
-  // Validate API key
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.error(
-      chalk.redBright(
-        "\n  ✖  Missing ANTHROPIC_API_KEY environment variable.\n" +
-          "     Set it and try again:\n" +
-          "     export ANTHROPIC_API_KEY=sk-ant-...\n"
-      )
-    );
-    process.exit(1);
+function extractGeminiText(response) {
+  if (!response) {
+    return "";
   }
 
-  const history = loadHistory();
-  const client = new Anthropic({ apiKey });
-
-  const spinner = ora({
-    text: chalk.cyan("  Asking Claude to write your paper…"),
-    spinner: "dots",
-    color: "cyan",
-  }).start();
-
-  let rawResponse;
-  try {
-    const message = await client.messages.create({
-      model: "claude-opus-4-5",
-      max_tokens: 1500,
-      messages: [{ role: "user", content: buildPrompt(history) }],
-    });
-    rawResponse = message.content[0].text;
-  } catch (err) {
-    spinner.fail(chalk.redBright("  Claude API call failed."));
-    console.error(chalk.red(`\n  ${err.message}\n`));
-    process.exit(1);
+  if (typeof response.text === "string" && response.text.trim()) {
+    return response.text;
   }
 
-  spinner.succeed(chalk.greenBright("  Paper generated!"));
+  if (typeof response.text === "function") {
+    const textFromMethod = response.text();
+    if (typeof textFromMethod === "string" && textFromMethod.trim()) {
+      return textFromMethod;
+    }
+  }
 
-  // Parse JSON metadata block
+  const candidateText = (response.candidates ?? [])
+    .flatMap((candidate) => candidate.content?.parts ?? [])
+    .map((part) => part.text)
+    .filter((text) => typeof text === "string" && text.trim())
+    .join("\n")
+    .trim();
+
+  return candidateText;
+}
+
+function parseGeneratedPaper(rawResponse) {
   const jsonMatch = rawResponse.match(/```json\s*([\s\S]*?)\s*```/);
   let title = "Research Paper";
   let topicTag = "unknown";
@@ -255,11 +257,184 @@ async function main() {
       const meta = JSON.parse(jsonMatch[1]);
       title = meta.title ?? title;
       topicTag = meta.topic_tag ?? topicTag;
-      // Strip the JSON block from the body
       body = rawResponse.replace(/```json[\s\S]*?```/, "").trim();
     } catch {
-      // Parse error — use raw response as body
+      body = rawResponse;
     }
+  }
+
+  return { title, topicTag, body };
+}
+
+function countWords(text) {
+  return (text.match(/\b[\w'-]+\b/g) ?? []).length;
+}
+
+function validatePaperBody(body) {
+  const requiredSections = [
+    "## Abstract",
+    "## Introduction",
+    "## Key Findings",
+    "## Practical Implications",
+    "## Conclusion",
+  ];
+
+  const missingSections = requiredSections.filter(
+    (section) => !body.includes(section)
+  );
+  const words = countWords(body);
+
+  return {
+    isValid: missingSections.length === 0 && words >= 800,
+    missingSections,
+    words,
+  };
+}
+
+function buildRepairPrompt(originalPrompt, validation) {
+  const issues = [
+    validation.words < 800
+      ? `- Too short: ${validation.words} words; must be 900-1200 words.`
+      : null,
+    validation.missingSections.length
+      ? `- Missing sections: ${validation.missingSections.join(", ")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return `${originalPrompt}
+
+Your prior answer did not satisfy the format/length requirements:
+${issues}
+
+Rewrite the paper from scratch and fully comply. Return only:
+1) A JSON metadata block as instructed.
+2) The complete markdown paper body.`;
+}
+
+/* ─────────────────────────────────────────────
+   Main
+───────────────────────────────────────────── */
+async function main() {
+  banner();
+
+  // Validate API key
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error(
+      chalk.redBright(
+        "\n  ✖  Missing GEMINI_API_KEY environment variable.\n" +
+          "     Set it and try again:\n" +
+          "     export GEMINI_API_KEY=AIza...\n"
+      )
+    );
+    process.exit(1);
+  }
+
+  const history = loadHistory();
+  const client = new GoogleGenAI({ apiKey });
+  const prompt = buildPrompt(history);
+  const preferredModel = process.env.GEMINI_MODEL?.trim();
+  const modelCandidates = [...new Set([
+    preferredModel,
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+  ].filter(Boolean))];
+
+  const spinner = ora({
+    text: chalk.cyan("  Asking Gemini to write your paper…"),
+    spinner: "dots",
+    color: "cyan",
+  }).start();
+
+  let rawResponse;
+  let modelUsed = modelCandidates[0];
+  let lastError;
+  try {
+    for (const modelName of modelCandidates) {
+      try {
+        let candidateText = "";
+        let validation = { isValid: false, missingSections: [], words: 0 };
+
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const contents =
+            attempt === 0
+              ? prompt
+              : buildRepairPrompt(prompt, validation);
+
+          const response = await client.models.generateContent({
+            model: modelName,
+            contents,
+            config: {
+              maxOutputTokens: 2600,
+            },
+          });
+
+          const extractedText = extractGeminiText(response);
+          if (!extractedText) {
+            continue;
+          }
+
+          candidateText = extractedText;
+          const parsed = parseGeneratedPaper(candidateText);
+          validation = validatePaperBody(parsed.body);
+
+          if (validation.isValid) {
+            rawResponse = candidateText;
+            modelUsed = modelName;
+            lastError = null;
+            break;
+          }
+        }
+
+        if (rawResponse) {
+          break;
+        }
+
+        lastError = new Error(
+          `Incomplete output from model ${modelName} (words: ${validation.words}; missing sections: ${validation.missingSections.join(", ") || "none"}).`
+        );
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    if (!rawResponse) {
+      throw lastError ?? new Error("No response received from any Gemini model.");
+    }
+  } catch (err) {
+    spinner.fail(chalk.redBright("  Gemini API call failed."));
+    console.error(chalk.red(`\n  ${err.message}\n`));
+    console.error(
+      chalk.yellow(
+        "  Tried models: " + modelCandidates.join(", ") +
+          "\n  Tip: set GEMINI_MODEL to one your account can access, or enable billing.\n"
+      )
+    );
+    process.exit(1);
+  }
+
+  spinner.succeed(chalk.greenBright(`  Paper generated! (${modelUsed})`));
+
+  const parsedPaper = parseGeneratedPaper(rawResponse);
+  let title = parsedPaper.title;
+  let topicTag = parsedPaper.topicTag;
+  let body = parsedPaper.body;
+
+  if (!body.trim()) {
+    body = rawResponse.trim();
+  }
+
+  if (!body.trim()) {
+    body = "No printable text was returned by the model.";
+  }
+
+  if (process.env.GEMINI_DEBUG === "1") {
+    console.log(chalk.dim("\n  [debug] raw response preview:\n"));
+    console.log(chalk.dim(rawResponse.slice(0, 800)));
+    console.log();
   }
 
   // Display in terminal

@@ -1,6 +1,6 @@
 # run.ps1 — PowerShell launcher for fact-a-day research paper generator
 # Usage:  .\run.ps1
-# Requires: Node.js, ANTHROPIC_API_KEY environment variable
+# Requires: Node.js, GEMINI_API_KEY environment variable
 
 $ErrorActionPreference = "Stop"
 
@@ -11,9 +11,9 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 }
 
 # Check for API key
-if (-not $env:ANTHROPIC_API_KEY) {
-    Write-Host "ERROR: ANTHROPIC_API_KEY is not set." -ForegroundColor Red
-    Write-Host 'Set it with:  $env:ANTHROPIC_API_KEY = "sk-ant-..."' -ForegroundColor Yellow
+if (-not $env:GEMINI_API_KEY) {
+    Write-Host "ERROR: GEMINI_API_KEY is not set." -ForegroundColor Red
+    Write-Host 'Set it with:  $env:GEMINI_API_KEY = "AIza..."' -ForegroundColor Yellow
     exit 1
 }
 

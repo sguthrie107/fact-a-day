@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run.sh — Shell launcher for fact-a-day research paper generator
 # Usage:  ./run.sh
-# Requires: Node.js, ANTHROPIC_API_KEY environment variable
+# Requires: Node.js, GEMINI_API_KEY environment variable
 
 set -e
 
@@ -14,9 +14,9 @@ if ! command -v node &>/dev/null; then
 fi
 
 # Check for API key
-if [ -z "$ANTHROPIC_API_KEY" ]; then
-  echo "ERROR: ANTHROPIC_API_KEY is not set." >&2
-  echo "Set it with:  export ANTHROPIC_API_KEY=sk-ant-..." >&2
+if [ -z "$GEMINI_API_KEY" ]; then
+  echo "ERROR: GEMINI_API_KEY is not set." >&2
+  echo "Set it with:  export GEMINI_API_KEY=AIza..." >&2
   exit 1
 fi
 
